@@ -40,7 +40,7 @@
 # %%
 # Required packages: pandas, pyarrow
 # If you don't have them installed, uncomment and run the line below:
-# %pip install pandas pyarrow
+# %pip install pandas pyarrow matplotlib seaborn numpy
 
 # %% [markdown]
 # Note: this cell uses Parquet (a highly compressed file that is temporary storage of frequently accessed data) caching for speed. The first run takes around 60-90 seconds (loading and cleaning the CSV). After the Parquet file is created, runs load in 1-2 seconds from the cached Parquet file. If the cache ever needs to be rebuilt (e.g., the CSV was updated), set FORCE_REBUILD = True, run the cell once, then set it back to False.
@@ -48,7 +48,14 @@
 # %%
 import os
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
 
+# Set a clean visual style
+sns.set_theme(style="whitegrid")
+
+# %%
 CSV_PATH = "311_Service_Requests_from_2020_to_Present_20260620.csv"
 PARQUET_PATH = "311_2025.parquet"
 DATE_FORMAT = "%m/%d/%Y %I:%M:%S %p"
@@ -74,7 +81,6 @@ else:
     
     df.to_parquet(PARQUET_PATH)
     print(f"Saved {len(df):,} rows to parquet for next time")
-
 
 # %% [markdown]
 # ## Sanity check: is this really only 2025?
@@ -302,11 +308,121 @@ print(count_and_pct(year_plus['Complaint Type'], 10))
 # 2. **Negative resolution times (914 records, ~91% DOT/Street Light).** Almost certainly a system bug. Excluded from resolution-time calculations.
 # 3. **Resolution times over 1 year (1,103 records, spread across infrastructure agencies).** Likely real complaints that genuinely take a long time. Kept in the analysis.
 # 
+# Below is a quick summary of the numbers showing what's changed.
+# 
 # With those decisions made, we're ready to actually answer the questions.
+
+# %%
+# Copy old data set and create new data set with filtered out info. This is what we should be working with going forward.
+df_original = df.copy()
+df = df[
+    (df['resolution_hours'] > 0) &
+    (df['Status'] == 'Closed') &
+    ~((df['Agency'] == 'DHS') & (df['Closed Date'].isnull()))
+]
+
+row_removal_difference = len(df_original) - len(df)
+print(f'Rows removed: {row_removal_difference}')
+
+print(f'Total rows in uncleaned data set: {len(df_original)}')
+print(f'Total rows in cleaned data set: {len(df)}')
+
+print(f'Percentage of rows removed: {(row_removal_difference / len(df_original) * 100):.2f}%')
+print(f'Percentage of rows remaining: {(len(df) / len(df_original) * 100):.2f}%')
+
+# %% [markdown]
+# The results show that 134,517 (3.68%) total rows were removed. Let's take a little peak as to understand where those rows went.
+
+# %%
+# What status values did we lose?
+print("Status distribution in REMOVED records:")
+removed = df_original[~df_original.index.isin(df.index)]
+print(removed['Status'].value_counts())
+print(f"\nNegative resolution hours in original: {(df_original['resolution_hours'] < 0).sum():,}")
+print(f"NaT resolution hours in original: {df_original['resolution_hours'].isnull().sum():,}")
+
+# %% [markdown]
+# # Breaking down the removed rows
+# 
+# Wait, why are we removing records we seemingly want?
+# 
+# There are 2 reasons for that:
+# - **69,358 were technically 'Closed'** but weren't valid resolution times 
+#   (missing close date, negative time, or simultaneous open/close)
+# - **65,159 were still active** (In Progress, Open, Assigned, Pending, 
+#   Started, or Unspecified) at the time of the data export
+# 
+# So the cleaned dataset isn't just "closed records" but
+# "closed records with a valid, positive resolution time." That's the 
+# data we can actually measure time-to-close on.
+
+# %%
+print(df['Status'].value_counts())
+print(f"\nAny NaT resolution hours: {df['resolution_hours'].isnull().sum():,}")
+print(f"Any negative resolution hours: {(df['resolution_hours'] < 0).sum():,}")
+print(f"Any DHS records: {(df['Agency'] == 'DHS').sum():,}")
 
 # %% [markdown]
 # # Question 1: How fast do things get done?
 # 
-# Now that we've worked through the data quality issues and know what to trust and what to filter, we can actually answer the question. Let's look at the distribution of resolution times across all clean records and break it down by agency, complaint type, and borough.
+# Now that we've worked through the data quality issues and know what to trust and what to filter, we can actually answer the question. Let's look at the resolution times across all clean records and break it down by agency, complaint type, and borough.
 # 
-# *(Visualization work continues in the next session.)*
+# Reminder: When I say what's valid and what to trust, we're talking about records with a closed status, positive hours (resolution time), and excluding the DHS records.
+
+# %%
+# Let's look at the fresh describe on the cleaned dataset.
+df['resolution_hours'].describe()
+
+# %% [markdown]
+# # Resolution times on the cleaned dataset
+# 
+# After filtering to valid closed records with positive resolution times, we can see that the distribution is very similar to the original raw data. This is good! This indicates that what we removed didn't change the data that drastically. The median bumped up slightly from 6.5 hours to 7.15 and the mean bumped up as well from 211.3 hours to 214.7. The shape remains the same with everything being heavily right-skewed with most complaints being resolved within a day but a longer tail stretching to over a year.
+# 
+# If we notice the min of 0.00 hours, this simply reflects requests being opened and closed within minutes and does not indicate a data quality issue. It's completely viable for a request to be completed within the hour.
+# 
+# Let's take a look at some graphs.
+
+# %%
+fig, ax = plt.subplots(figsize=(12, 5))
+
+# Define bins in log space instead of linear space
+log_bins = np.logspace(
+    np.log10(df['resolution_hours'].min() + 0.01),
+    np.log10(df['resolution_hours'].max()),
+    100
+)
+
+ax.hist(df['resolution_hours'],
+        bins=log_bins,
+        color='steelblue',
+        edgecolor='none')
+
+ax.set_xscale('log')
+
+ax.set_title('Distribution of Resolution Times', fontsize=14, pad=15)
+ax.set_xlabel('Resolution Time (hours, log scale)', fontsize=11)
+ax.set_ylabel('Number of Complaints', fontsize=11)
+
+# Readable tick labels
+ax.set_xticks([1, 6, 24, 168, 720, 8760])
+ax.set_xticklabels(['1hr', '6hrs', '1 day', '1 week', '1 month', '1 year'])
+
+# Median line
+median_val = df['resolution_hours'].median()
+ax.axvline(median_val, color='red', linestyle='--', linewidth=1.5,
+           label=f'Median: {median_val:.1f} hrs')
+
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# %%
+# These need to go in Question 4
+print("By Borough:")
+print(count_and_pct(df['Borough'], 6))
+
+# This needs to go in Question 3
+print("\nBy Complaint Type:")
+print(count_and_pct(df['Complaint Type'], 10))
+
+
