@@ -40,7 +40,7 @@
 # %%
 # Required packages: pandas, pyarrow
 # If you don't have them installed, uncomment and run the line below:
-# %pip install pandas pyarrow matplotlib seaborn numpy
+%pip install pandas pyarrow matplotlib seaborn numpy
 
 # %% [markdown]
 # Note: this cell uses Parquet (a highly compressed file that is temporary storage of frequently accessed data) caching for speed. The first run takes around 60-90 seconds (loading and cleaning the CSV). After the Parquet file is created, runs load in 1-2 seconds from the cached Parquet file. If the cache ever needs to be rebuilt (e.g., the CSV was updated), set FORCE_REBUILD = True, run the cell once, then set it back to False.
@@ -415,6 +415,172 @@ ax.axvline(median_val, color='red', linestyle='--', linewidth=1.5,
 ax.legend()
 plt.tight_layout()
 plt.show()
+
+# %% [markdown]
+# # Initial analysis
+# 
+# Upon generating the histogram, we see something more interesting than a 
+# simple right skew... there are 2 distinct peaks. The first and largest 
+# peak sits around the 1 hour mark, representing requests that get handled 
+# very quickly. These are likely noise complaints or other routine requests 
+# that agencies can action immediately.
+# 
+# There's then a dip around the 6 hour to 1 day range. My instinct is that 
+# this reflects requests coming in at the end of the work day and sitting 
+# overnight unhandled, but that's worth investigating further.
+# 
+# After that dip, we see a second elevated stretch with some jagged spikes 
+# through the 1 day to 1 week range, likely representing more labor-intensive 
+# requests that go through a formal process before closing. Then one final 
+# notable spike around the 1 month mark before the tail tapers off.
+# 
+# What's making up these different peaks? Let's find out.
+
+# %%
+# What's in the first peak - complaints closing within the first 2 hours
+first_peak = df[df['resolution_hours'] <= 2]
+
+print(f"Records in first peak: {len(first_peak):,}")
+print(f"\nBy Complaint Type:")
+print(count_and_pct(first_peak['Complaint Type'], 10))
+print(f"\nBy Agency:")
+print(count_and_pct(first_peak['Agency'], 10))
+
+# %% [markdown]
+# # The first peak analysis
+# 
+# After pulling the information for the first peak, we notice a few things that are pretty interesting. Firstly, we notice that about 90% of requests closed in under 2 hours are handled by the NYPD. This is very fascinating because it leads me to believe the NYPD either have a shorter process for handling requests or they are just incredibly fast. Without knowing the inner workings of how the NYPD operate, the data supports that NYPD officers are able to close requests on the spot without going through a formal process. Regarding complaint type, the top complaint types involve illegal parking and noise complaints across several subcategories, which is something I expected to see for NYC with how congested it is. As we look at the other complaint reasons, it's easy to see why the NYPD is the dominating agency as most all of these would require a police officer to attend to the issue.
+
+# %%
+# What's in that second peak around 1 month?
+second_peak = df[(df['resolution_hours'] >= 480) & 
+                 (df['resolution_hours'] <= 1080)]
+
+print(f"Records in second peak: {len(second_peak):,}")
+print(f"\nBy Complaint Type:")
+print(count_and_pct(second_peak['Complaint Type'], 10))
+print(f"\nBy Agency:")
+print(count_and_pct(second_peak['Agency'], 10))
+
+# %% [markdown]
+# # The second peak analysis
+# 
+# From our results for the second peak, we can see that HPD (Department of Housing Preservation and Development) leads the Agency charge with 71242 records (54%). Given the nature of the department, it's natural that things regarding housing take a long time. In this case, it seems like requests take around 30 days for the agency, which leads me to believe that there is some sort of formal process that the agency goes through that results in about a month's completion time. If we look at what the complaints are for that second peak, we can see that the complaints are things that cannot be resolved in an hour or so as unsanitary conditions, plumbing issues, and water leaks all take time to fix, especially in a large city like New York City.
+
+# %% [markdown]
+# # Connecting the two peaks
+# 
+# When looking at the two, the two peaks reveal something about how NYC city services work and that's some services (police responses) are designed for immediate reaction and resolution while others (housing and maintenance) are following a more scripted, regulated process that takes weeks to months. Seeing the two peaks isn't a data issue but an indication of the inner workings and design of New York City's service resolution.
+# 
+
+# %% [markdown]
+# # Agency time analysis
+# 
+# Now that we've seen the overall resolution time, let's get a bit specific on some resolution time analysis. Let's first take a look at how the top 15 agencies (by volume) handle requests.
+
+# %%
+# Top 15 agencies by complaint volume
+top_agencies = df['Agency'].value_counts().head(15).index
+
+agency_median = (df[df['Agency'].isin(top_agencies)]
+                 .groupby('Agency')['resolution_hours']
+                 .median()
+                 .sort_values(ascending=True))
+
+fig, ax = plt.subplots(figsize=(12, 7))
+
+bars = ax.barh(agency_median.index, agency_median.values, color='steelblue')
+
+# Add value labels on each bar
+for bar, val in zip(bars, agency_median.values):
+    ax.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height()/2,
+            f'{val:.1f} hrs', va='center', fontsize=9)
+
+ax.set_title('Median Resolution Time by Agency (Top 15 by Volume)', 
+             fontsize=14, pad=15)
+ax.set_xlabel('Median Resolution Hours', fontsize=11)
+ax.set_ylabel('Agency', fontsize=11)
+
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# From the bar graph generated, we can see that NYPD has the fastest resolution time median with 1.3 hours. This likely reflects my earlier statement that the NYPD are able to close requests with a less formal process leading to faster times. The resolution times and corresponding agencies make sense as you move up the chart. It makes sense that OTI (Office of Technology and Innovation), for example, takes a longer time to resolve because of formal ticketing systems and the nature of technology requests taking more time. It also makes sense that DOE (Department of Education) takes longer as well because of school schedules and requests likely being completed in the summer months. 
+# 
+# We can also notice the natural groupings of agencies and their requests. Same-day resolutions go to NYPD and DHS, multi-day go to DEP and DOT, weeks/month long requests go to HPD and DPR, and lastly several month plus go to TLC and EDC. This just helps us understand the different agencies and the types of services within the city.
+# 
+# A small interesting data point here is that DHS, an agency which had quite a bit of data quality issues earlier, resolves issues in about 8 hours (close to 1 work day). 
+# 
+# Lastly, we can see the huge outlier of EDC median taking almost a year at 310 days. This too makes sense as EDC (Economic Development Corporation) handles very large-scale projects that simply take long periods of time to complete. All in all, agency resolution times correlate to the nature of the request, which just makes sense. 
+
+# %%
+# Top 15 complaint types by volume
+top_complaints = df['Complaint Type'].value_counts().head(15).index
+
+complaint_median = (df[df['Complaint Type'].isin(top_complaints)]
+                    .groupby('Complaint Type')['resolution_hours']
+                    .median()
+                    .sort_values(ascending=True))
+
+fig, ax = plt.subplots(figsize=(12, 7))
+
+bars = ax.barh(complaint_median.index, complaint_median.values, 
+               color='steelblue')
+
+for bar, val in zip(bars, complaint_median.values):
+    ax.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height()/2,
+            f'{val:.1f} hrs', va='center', fontsize=9)
+
+ax.set_title('Median Resolution Time by Complaint Type (Top 15 by Volume)', 
+             fontsize=14, pad=15)
+ax.set_xlabel('Median Resolution Hours', fontsize=11)
+ax.set_ylabel('Complaint Type', fontsize=11)
+
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# Not surprisingly, the fastest complaint types are almost entirely NYPD-handled requests, while the slowest are predominantly HPD housing complaints. This is all very consistent with what we found in the agency breakdown.
+# 
+# By looking at the median resolution time by complaint type, we can see that specific noise complaints resolve very quickly. We can also see that illegal parking,  blocked driveways, and abandoned vehicles (which likely correlate to each other as blocked driveways are often due to illegal parking) are all resolved in a similar, short window of time. Again, this links back to likely being NYPD requests which we've seen have very quick resolution times.
+# 
+# What I find interesting is that the generic noise complaints, which seems to be a catch-all for non-specific complaints, have a median time of 66.8 hours of resolution while specific noise complaints are the fastest. Perhaps this is due to being more generic which results in different agencies being involved or generic meaning it's more involved.
+# 
+# Another interesting aspect is that water system complaints are resolved relatively quickly with 9.9 hour median resolution times while heat/hot water has 39.4 hour resolution times. This makes me think that the former relates more to water leaks or possibly dirty water in the tap which would take priority as safe drinking water is paramount. 
+# 
+# Lastly, we can see at the top the slowest complaints to be resolved are things like dirty conditions, paint/plaster which likely is whole building paint jobs, and the slowest being plumbing and unsanitary conditions, which has a separate complaint type than "dirty conditions." These all make sense as those types of complaints take longer to resolve with more formal inspection processes and likely because checks/verifications need to be performed after the service is completed.
+
+# %%
+# Drop unspecified
+borough_median = (df[df['Borough'] != 'Unspecified']
+                  .groupby('Borough')['resolution_hours']
+                  .median()
+                  .sort_values(ascending=True))
+
+fig, ax = plt.subplots(figsize=(10, 5))
+
+bars = ax.barh(borough_median.index, borough_median.values, 
+               color='steelblue')
+
+for bar, val in zip(bars, borough_median.values):
+    ax.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height()/2,
+            f'{val:.1f} hrs', va='center', fontsize=9)
+
+ax.set_title('Median Resolution Time by Borough', fontsize=14, pad=15)
+ax.set_xlabel('Median Resolution Hours', fontsize=11)
+ax.set_ylabel('Borough', fontsize=11)
+
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# From our third bar graph, which focuses on the resolution time per borough, we can see that Queens has the fastest resolution time at 4.2 hours with Brooklyn being fairly close with 6.7 hours. One possible explanation for this is that these boroughs are the largest and share more land borders without any real water divide (aside from the Jamaica Bay area) which could potentially result in more manpower being distributed there because of the larger area to cover. 
+# 
+# Manhattan and the Bronx are pretty close to each other as well being at 10 hours and 11.2 hours respectively, and that too makes sense because they're closer to each other. These two boroughs have rivers separating them from both each other and the other boroughs, which means there are fewer entry points to them, which may lead to longer response times. 
+# 
+# Staten Island takes the longest at 16.4 hours. While on a map Staten Island is about the same size as Brooklyn (a little smaller), it's much further away from the other boroughs and has a larger body of water separating them. With fewer access points, agencies probably aren't able to respond as quickly.
+# 
+# It's worth noting that the spread of the resolution times across the boroughs is relatively small compared to earlier variations of resolutions. The data shows that while location has some impact, what the complaint is matters more than where the complaint happened.
 
 # %%
 # These need to go in Question 4
