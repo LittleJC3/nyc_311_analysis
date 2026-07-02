@@ -40,7 +40,7 @@
 # %%
 # Required packages: pandas, pyarrow
 # If you don't have them installed, uncomment and run the line below:
-%pip install pandas pyarrow matplotlib seaborn numpy
+# %pip install pandas pyarrow matplotlib seaborn numpy
 
 # %% [markdown]
 # Note: this cell uses Parquet (a highly compressed file that is temporary storage of frequently accessed data) caching for speed. The first run takes around 60-90 seconds (loading and cleaning the CSV). After the Parquet file is created, runs load in 1-2 seconds from the cached Parquet file. If the cache ever needs to be rebuilt (e.g., the CSV was updated), set FORCE_REBUILD = True, run the cell once, then set it back to False.
@@ -660,9 +660,66 @@ print(count_and_pct(df['Complaint Type'], 15))
 # 
 # It's easy to see here that the top 2 complaints are handled by NYPD while HEAT/HOT WATER, the third most commont, is HPD handled. This links back nicely to earlier results with those 2 agencies being leaders in the first and second peaks.
 
+# %% [markdown]
+# # Question 4: What happens where?
+# 
+# We've touched briefly on median resolutions by borough, but we haven't really explored what types of complaints are more common across the boroughs. Let's dive deeper into what's going on in each borough.
+
 # %%
-# Goes in Question 4
+# Drop unspecified
+borough_counts = (df[df['Borough'] != 'Unspecified']['Borough']
+                  .value_counts()
+                  .head(5)
+                  .sort_values(ascending=True))
+
+fig, ax = plt.subplots(figsize=(12, 7))
+
+bars = ax.barh(borough_counts .index, borough_counts .values, color='steelblue')
+
+# Add value labels on each bar
+for bar, val in zip(bars, borough_counts .values):
+    ax.text(bar.get_width() + 5000, bar.get_y() + bar.get_height()/2,
+            f'{val:,.0f}', va='center', fontsize=9)
+
+ax.set_title('Complaint Volume by Borough', fontsize=14, pad=15)
+ax.set_xlabel('Number of Complaints', fontsize=11)
+ax.set_ylabel('Borough', fontsize=11)
+
+plt.tight_layout()
+plt.show()
+
+# Percentage counts
 print("By Borough:")
-print(count_and_pct(df['Borough'], 6))
+print(count_and_pct(df[df['Borough'] != 'Unspecified']['Borough'], 5))
+
+# Top 3 complaint types per borough
+top3_per_borough = (df[df['Borough'] != 'Unspecified']
+                    .groupby('Borough')['Complaint Type']
+                    .apply(lambda x: x.value_counts().head(3))
+                    .reset_index())
+
+print('\n\n')
+top3_per_borough.columns = ['Borough', 'Complaint Type', 'Count']
+print(top3_per_borough.to_string(index=False))
+
+# %% [markdown]
+# # The borough analysis
+# 
+# From our graph, we can see that Brooklyn takes a commanding lead of the total complaint volume at just over 1 million complaints, which is nearly 30% (29.6% to be exact) of the total complaints. Not far behind are both Queens and the Bronx at 841,817 (23.9%) and 817,093 (23.2%) complaints for their respective boroughs. These 2 boroughs being so similar in complaint count is intriguing to me since Queens is geographically much larger than the Bronx.
+# 
+# After the Queens and Bronx borderline tie is Manhattan at 690,455 complaints (19.6%) which, although the data has been supporting the other boroughs get more complaints, is surprising to me since everyone thinks that NYC = Manhattan. Since studying this data, it's been interesting to see that Manhattan isn't the leading force in a lot of areas.
+# 
+# Lastly we have Staten Island at only 128,978 complaints, which is only 3.7% of the total. While I expected Staten Island to have a smaller complaint count, it's surprising to see that they have so few in the grand scheme. The most likely explanation for this is because of the population difference from Staten Island to the rest of the boroughs, as Staten Island has roughly 500,000 residents compared to Brooklyn's 2.7 million.
+# 
+# Regarding what the top complaints are for each borough, it's interesting to see that the top 3 complaints for each are all from the top 3 of the overall complaint volume, except for 2. It's natural for us to see the top 3 overall complaint types being represented here in some fashion, but seeing Queens and Staten Island's third top complaint differing is interesting to see.
+# 
+# We also see two outliers to the pattern in the Bronx and Manhattan. While the other 3 boroughs have Illegal Parking as their top complaint, the Bronx has residential noise complaints as theirs, and its nearly double its second-place complaint. Manhattan, on the other hand, has HEAT/HOT WATER as their top complaint for their borough, which likely reflects the vast number of apartment buildings where the heating systems provide heat across entire floors of residents. 
+# 
+# Queens third most common complaint is a blocked driveway. While this isn't in the top 3 of the overall complaint volume, it still ranks 5th. The reason we likely see it here in Queens is because the borough is more residential than the others. This means more houses, apartments, condos, etc. so seeing more complaints about a blocked driveway makes sense.
+# 
+# Staten Island, on the other hand, has Missed Collection as its third highest complaint. Like Queens, Staten Island is also more residential, so there are more living spaces for trash and recycling to be picked up from. With that in mind, you would assume that a blocked driveway would be the third highest complaint like Queens, but here we see missed collections. Staten Island is geographically more distant from the others, so it's likely because more travel time has to be put in to get there.
+
+# %%
+
 
 
