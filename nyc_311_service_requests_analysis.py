@@ -582,13 +582,87 @@ plt.show()
 # 
 # It's worth noting that the spread of the resolution times across the boroughs is relatively small compared to earlier variations of resolutions. The data shows that while location has some impact, what the complaint is matters more than where the complaint happened.
 
+# %% [markdown]
+# # Question 2: Who handles the complaints?
+# 
+# We've slightly covered this already, but it's time for a more in-depth analysis on which agency handles the majority of the complaints. From what we've seen, the NYPD handles the majority of complaints, but let's see if that still holds true after we break it down.
+
 # %%
-# These need to go in Question 4
+# Complaint volume by agency (top 15)
+agency_counts = df['Agency'].value_counts().head(15).sort_values(ascending=True)
+
+fig, ax = plt.subplots(figsize=(12, 7))
+
+bars = ax.barh(agency_counts.index, agency_counts.values, color='steelblue')
+
+# Add value labels on each bar
+for bar, val in zip(bars, agency_counts.values):
+    ax.text(bar.get_width() + 5000, bar.get_y() + bar.get_height()/2,
+            f'{val:,.0f}', va='center', fontsize=9)
+
+ax.set_title('Complaint Volume by Agency (Top 15)', fontsize=14, pad=15)
+ax.set_xlabel('Number of Complaints', fontsize=11)
+ax.set_ylabel('Agency', fontsize=11)
+
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# # Complaint by agency analysis
+# 
+# After generating our bar graph, we can confirm that NYPD is the dominating agency by a significant margin of just over 1.7 million. Considering the data set houses 3.6 million records, it's amazing that the NYPD takes care of roughly 49% of all the complaints (in the cleaned dataset). But from what we've been seeing with the data, it makes sense that the NYPD is handling the majority of the requests as noise and parking complaints are the most common. The agency that's second is the HPD and that too makes logical sense as they deal with housing. NYC has a very large population, so it's only natural that with that many people living there, the request count involving living conditions would be high. 
+# 
+# It's also something to point out how drastic the gap is between the NYPD and HPD. HPD handles less than half of what the NYPD does and the drop-off continues heavily from there.
+# 
+# In the middle we can see DOHMH (Health and Mental Hygiene) at 54,766 and DHS (Homeless Services) at 45,441. These two are fairly close in number and I could speculate that some of the requests work across both agencies as homelessness can create health/mental health issues.
+# 
+# At the end of the graph we see OTI (Technology and Innovation) with only 204 requests. That's such a low number in the grand scheme of things but perhaps this is because, as we saw earlier, OTI median requests take 355.4 hours for completion or maybe it's because most technology requests are completed via private business rather than government services.
+
+# %% [markdown]
+# # Question 3: What do people complain about?
+# 
+# Like question 2, we've covered this a little bit but now it's time for an isolated analysis. We saw earlier that illegal parking and residential and street/sidewalk noise complaints were the leaders for the first peak of the distribution of resolution times, but that doesn't mean we'll see them as leaders here. Let's find out.
+
+# %%
+# Complaint volume by Complaint Type (top 15)
+complaint_counts  = df['Complaint Type'].value_counts().head(15).sort_values(ascending=True)
+
+fig, ax = plt.subplots(figsize=(12, 7))
+
+bars = ax.barh(complaint_counts .index, complaint_counts .values, color='steelblue')
+
+# Add value labels on each bar
+for bar, val in zip(bars, complaint_counts .values):
+    ax.text(bar.get_width() + 5000, bar.get_y() + bar.get_height()/2,
+            f'{val:,.0f}', va='center', fontsize=9)
+
+ax.set_title('Complaint Volume by Complaint Type (Top 15)', fontsize=14, pad=15)
+ax.set_xlabel('Number of Complaints', fontsize=11)
+ax.set_ylabel('Complaint Type', fontsize=11)
+
+plt.tight_layout()
+plt.show()
+
+print("\nBy Complaint Type:")
+print(count_and_pct(df['Complaint Type'], 15))
+
+
+# %% [markdown]
+# # Complaints by type analysis
+# 
+# It would seem the first peak from the histogram accurately reflects most of the top complaints here. In the lead, we have illegal parking with more than half a million complaints (577,248), followed fairly close by Noise - Residential (463,171) and HEAT/HOT WATER (314,378). Each of the top 3 have about a 100,000 difference between them, so it's safe to say there likely isn't a connection, but the top 2 are complaints we've seen resolved quickly while HEAT/HOT WATER takes almost 2 days.
+# 
+# However, looking deeper, we can see that all "Noise" complaints totaled across 4 subcategories is roughly 756,000 complaints while illegal parking is roughly 575,000, resulting in overall noise comnplaints as the largest complaint "type."
+# 
+# Something that is intriguing to see is that Noise - Street/Sidewalk and Blocked Driveway are almost identical with 173,033 and 172,721 respectively. It's possible that these complaints are sometimes related (a blocked driveway could create noise on a street), but the dataset doesn't have enough detail to confirm if individual complaints are related.
+# 
+# After that borderline tie, we see UNSANITARY CONDITION with 117,244 complaints and then a pretty steady and close decline of the numbers. At the bottom we have Noise and Encampment at 55,706 and 47,995 respectively which could potentially be another connection.
+# 
+# It's easy to see here that the top 2 complaints are handled by NYPD while HEAT/HOT WATER, the third most commont, is HPD handled. This links back nicely to earlier results with those 2 agencies being leaders in the first and second peaks.
+
+# %%
+# Goes in Question 4
 print("By Borough:")
 print(count_and_pct(df['Borough'], 6))
-
-# This needs to go in Question 3
-print("\nBy Complaint Type:")
-print(count_and_pct(df['Complaint Type'], 10))
 
 
