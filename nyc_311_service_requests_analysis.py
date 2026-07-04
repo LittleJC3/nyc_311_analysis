@@ -51,6 +51,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 
 # Set a clean visual style
 sns.set_theme(style="whitegrid")
@@ -238,7 +240,7 @@ df['resolution_hours'].describe()
 # 
 # The mean on the other hand is about 9 days, which is more than 30 times the median. This is more typical of what I would expect NYC to take to resolve issues, especially more involved ones.
 # 
-# Lastly, we have the 2 extremes which is the minimum that says -200 days and then the maximum which is about a year and a half. For the minimum, a complaint can't close before it's opened, so that's likely a data entry issue. As for the nearly 2 year long request, it's possible it's another data entry issue or just a very long request that's on-going.
+# Lastly, we have the 2 extremes which is the minimum that says -200 days and then the maximum which is about a year and a half. For the minimum, a complaint can't close before it's opened, so that's likely a data entry issue. As for the nearly 2 year long request, it's possible this is another data entry issue or just a very long request that's on-going.
 # 
 # Let's look into the negative resolution times first and see what's happening.
 
@@ -719,7 +721,157 @@ print(top3_per_borough.to_string(index=False))
 # 
 # Staten Island, on the other hand, has Missed Collection as its third highest complaint. Like Queens, Staten Island is also more residential, so there are more living spaces for trash and recycling to be picked up from. With that in mind, you would assume that a blocked driveway would be the third highest complaint like Queens, but here we see missed collections. Staten Island is geographically more distant from the others, so it's likely because more travel time has to be put in to get there.
 
-# %%
+# %% [markdown]
+# # Question 5: When are complaints filed?
+# 
+# Now that we're at our last question of the notebook, let's take a look at when complaints are filed. Let's take a look at 4 different graphs to better understand different time groupings. 
+# 
+# Chart 1 - Hour of Day: Here I expect to see the afternoon with a higher count as most people are awake and going about daily life.
+# Chart 2 - Day of Week: I expect to see the weekends with a higher number as more people are home.
+# Chart 3 - Month of Year: For this graph, I expect to see the summer months and the winter months with higher counts as in summer, people are out exploring/doing activities while winter the cold would create more complaints.
+# Chart 4 - A hypothesis test: Since we've seen that noise complaints are consistently totaled high in complaint counts, I'm curious to see if the other complaints are higher during the middle of the day when people aren't home and then for noise complaints to be higher at night when people are.
 
+# %%
+# Day name mapping since days of the week go from 0 - 6
+day_names = ['Monday', 'Tuesday', 'Wednesday', 
+             'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+# %% [markdown]
+# Chart 1: Hour of Day
+
+# %%
+hourly = df['Created Date'].dt.hour.value_counts().sort_index()
+
+fig, ax = plt.subplots(figsize=(14, 5))
+
+ax.bar(hourly.index, hourly.values, color='steelblue', edgecolor='none')
+
+ax.set_title('Complaint Volume by Hour of Day', fontsize=14, pad=15)
+ax.set_xlabel('Hour of Day (0 = Midnight, 12 = Noon)', fontsize=11)
+ax.set_ylabel('Number of Complaints', fontsize=11)
+ax.set_xticks(range(24))
+ax.set_xticklabels([f'{h:02d}:00' for h in range(24)], 
+                    rotation=45, ha='right', fontsize=8)
+ax.yaxis.set_major_formatter(mticker.FuncFormatter(
+    lambda x, _: f'{int(x):,}'))
+
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# Let's go from left to right for this chart. At midnight, there seem to be quite a few complaints at a bit over 125,000 and then quickly drop off. A lot of people are still up at midnight and these are likely noise complaints as everyone is trying to go to bed. It's natural, then, that the graph starts to dip from midnight until around 5AM - 6AM where people have been asleep and are getting up for the day. A quick note here that 4AM seems to be the time of day where the fewest complaints are filed, sitting at just under 50,000.
+# 
+# As we follow the curve upward from 4AM, we can see that my prediction proved close but slightly off in that complaints are at their highest, entering the 200,000 range at 10AM and hitting its peak at 11AM. This is late morning into early afternoon when most people are going about their daily tasks. From here on out we see things start to slope downward, but not very quickly, staying above the 150,000 total line the entire time.
+# 
+# Towards the end of the graph, we see that 7PM (19:00) hits a bottom. The number is still high, sitting almost perfectly between 150,000 and 175,000, but begins to climb again until 10PM where it's a bit over 175,000 total complaints. This is likely a spike in noise complaints and illegal parking as people are either home getting ready for bed or getting home from a late shift or night activity. From 10PM we see the shift downwards again, where we come full circle. 
+# 
+
+# %% [markdown]
+# Chart 2: Day of Week
+
+# %%
+daily = df['Created Date'].dt.dayofweek.value_counts().sort_index()
+
+fig, ax = plt.subplots(figsize=(10, 5))
+
+bars = ax.bar(day_names, daily.values, color='steelblue', edgecolor='none')
+
+# Add value labels on top of each bar
+for bar, val in zip(bars, daily.values):
+    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 2000,
+            f'{val:,}', ha='center', va='bottom', fontsize=9)
+
+ax.set_title('Complaint Volume by Day of Week', fontsize=14, pad=15)
+ax.set_xlabel('Day of Week', fontsize=11)
+ax.set_ylabel('Number of Complaints', fontsize=11)
+ax.yaxis.set_major_formatter(mticker.FuncFormatter(
+    lambda x, _: f'{int(x):,}'))
+
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# As we look at the complaints by day of the week, we can immediately see that my prediction was incorrect. The weekends here actually have the lowest complaint total, with Saturday and Sunday (the graph low) being almost identical at just under 472,000 each. However, looking at the weekday section of the graph, it's easy to see that they dominate with Monday leading at roughly 525,000 and a gradual decline to the weekday low of Thursday.
+# 
+# The reason here is probably more about how the city and its services operate and not so much about who is home. Most of these agencies operate primarily on the weekdays, which explains why we see a higher count. 
+
+# %% [markdown]
+# Chart 3: Month
+
+# %%
+monthly = df['Created Date'].dt.month.value_counts().sort_index()
+
+fig, ax = plt.subplots(figsize=(10, 5))
+
+bars = ax.bar(month_names, monthly.values, color='steelblue', edgecolor='none')
+
+# Add value labels on top of each bar
+for bar, val in zip(bars, monthly.values):
+    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 2000,
+            f'{val:,}', ha='center', va='bottom', fontsize=9)
+
+ax.set_title('Complaint Volume by Month (2025)', fontsize=14, pad=15)
+ax.set_xlabel('Month', fontsize=11)
+ax.set_ylabel('Number of Complaints', fontsize=11)
+ax.yaxis.set_major_formatter(mticker.FuncFormatter(
+    lambda x, _: f'{int(x):,}'))
+
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# When we look at the complaint volume by month, January leads the year with just over 340,000 complaints, which isn't surprising given the winter heating issues, frozen pipes, and freezing temperatures create a spike in complaints. February is a sharp drop at the graph low of about 247,000 complaints, though some of that is simply because February is a short month with only 28 days. 
+# 
+# It's also worth noting that January may have a larger count due to trailing complaints from December 2024 that weren't closed until January 2025. Since the dataset captures complaints by their close date, January becomes the natural spot for complaints opened late 2024 and resolved early in the new year. This same logic also applies on the other end of the spectrum where December 2025 will likely have a lot of year-end complaints unresolved until 2026.
+# 
+# What's interesting is that we don't see a spike in the summer months like I had predicted. May through September is very consistent without much fluctuation hovering between 280,000 and 300,000 with no clear surge. Where I thought that more people being active in the nicer weather and school being out for the summer would create higher totals, actually wasn't the case.
+# 
+# While still on the higher side, especially December, the year-end months are worth treating with a bit of caution. Since this dataset only includes records that were fully closed at the time of export, late year complaints may not have been closed yet. As we've seen earlier, some complaints take months to resolve, which may make November and December look smaller. These months probably don't show a real seasonal pattern like the rest of the year does.
+
+# %%
+# Split into noise vs non-noise by hour
+noise_types = ['Noise - Residential', 'Noise - Street/Sidewalk', 
+               'Noise - Commercial', 'Noise - Vehicle', 'Noise']
+
+noise = df[df['Complaint Type'].isin(noise_types)]
+non_noise = df[~df['Complaint Type'].isin(noise_types)]
+
+noise_hourly = noise['Created Date'].dt.hour.value_counts().sort_index()
+non_noise_hourly = non_noise['Created Date'].dt.hour.value_counts().sort_index()
+
+fig, ax = plt.subplots(figsize=(14, 5))
+
+ax.plot(noise_hourly.index, noise_hourly.values, 
+        color='steelblue', label='Noise complaints', linewidth=2)
+ax.plot(non_noise_hourly.index, non_noise_hourly.values, 
+        color='tomato', label='All other complaints', linewidth=2)
+
+ax.set_title('Complaint Volume by Hour — Noise vs Everything Else', 
+             fontsize=14, pad=15)
+ax.set_xlabel('Hour of Day', fontsize=11)
+ax.set_ylabel('Number of Complaints', fontsize=11)
+ax.set_xticks(range(24))
+ax.set_xticklabels([f'{h:02d}:00' for h in range(24)], 
+                    rotation=45, ha='right', fontsize=8)
+ax.yaxis.set_major_formatter(mticker.FuncFormatter(
+    lambda x, _: f'{int(x):,}'))
+ax.legend()
+
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# This chart explains that my hypothesis was correct in noise complaints being lower during the day and higher at night vs all other complaints being higher during the day and lower at night. The blue line here indicates any form of "Noise" complaint that we've seen, so that includes residential, street/sidewalk, commercial, and the generic "Noise" complaints. The red line is any other type of complaint in the dataset.
+# 
+# As you can see, from midnight until between 2AM and 3AM, the lines run fairly parallel with noise complaints being slightly higher. At about 2:15-2:30AM, the lines intersect and the red line starts to climb with a huge spike starting at 5AM as life in NYC starts becoming more active. At that same point, noise complaints drop and sits below the 25,000 mark all morning long. 
+# 
+# What's interesting is that at 5AM, where we see the spike for all other complaints, we see the noise complaints at their lowest (around 10,000-15,000). This is the shifting point where people are likely waking up and getting ready to go about their day, so complaints will shift from noise to the other complaints we've been seeing. Likewise, we see the noise complaints start to increase again at around 10AM, the same point when all other complaint types start to decrease from their massive peak of over 175,000.
+# 
+# These 2 lines slowly make their way back to each other where we see noise complaints hit their peak at 10PM (22:00) and then intersect with the red line just before midnight. This clearly shows the correlation between noise complaints being more prominent when people are home vs when they are away.
+# 
+# This also helps us see the NYPD's dominance in closing complaints quickly since the agency handling most of the noise complaints has officers already active and on patrol at night.
 
 
