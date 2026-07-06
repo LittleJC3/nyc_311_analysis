@@ -1,19 +1,30 @@
-# NYC 311 Service Requests — EDA
-
-Exploratory analysis of NYC's 311 service request data using Python.
-
-## What this is
+# NYC 311 Service Requests — Exploratory Data Analysis
 
 An exploratory data analysis of about 3.6 million NYC 311 service
-requests filed in 2025 using pandas. The notebook encompases going through 
+requests filed in 2025 using pandas. The notebook encompasses going through 
 loading and cleaning the data, identifying any data quality issues, and 
 answering questions about resolution times, agency patterns, and complaint volumes.
 
+## What I was looking for
+
+1. How fast do things get resolved?
+2. Who handles the complaints?
+3. What do people complain about?
+4. What happens where?
+5. When are complaints filed?
+
+## Headline findings
+
+- NYPD handles 49% of all complaints and closes them in a median of 1.3 hours which is more than the next 4 agencies combined
+- Resolution times are bimodal: quick police responses (under 2 hours) and formal housing processes (about 1 month)
+- Noise complaints are the true leader in volume at about 756,000 when combining subcategories, beating Illegal Parking's 577,000
+- Complaint patterns follow the rhythms of daily city life such as morning peaks, evening noise spikes, and weekday dominance
+
 ## Setup
 
-This notebook uses pandas and pyarrow:
+Install the following dependencies:
 
-    pip install pandas pyarrow
+    pip install pandas pyarrow matplotlib seaborn
 
 You'll also need the dataset itself. It's too large for GitHub, so go here:
 
@@ -30,7 +41,7 @@ Subsequent runs load in 1-2 seconds from the cache.
 - `nyc_311_service_requests_analysis.ipynb` — the main notebook
 - `nyc_311_service_requests_analysis.py` — same content as a python file (for git diffs)
 
-## Questions answered (or in progress)
+## Questions answered
 
 1. How fast do things get resolved? (in progress)
 2. Who handles the complaints? (todo)
@@ -38,14 +49,11 @@ Subsequent runs load in 1-2 seconds from the cache.
 4. What happens where? (todo)
 5. When are complaints filed? (todo)
 
-## Findings so far
+## Tools used
 
-Three data quality issues identified and documented:
+Python, pandas, NumPy, matplotlib, seaborn, pyarrow
 
-1. ~6,000 records marked "Closed" with no close date — 99% from DHS
-2. ~900 records with negative resolution time — 91% from DOT/Street Light
-3. ~1,100 records with resolution time over 1 year — spread across
-   infrastructure-heavy agencies (likely legitimate slow cases, not data
-   quality bugs)
+## About
 
-More to come as the analysis progresses!
+Built as a portfolio project while exploring data analytics. 
+GitHub: [LittleJC3](https://github.com/LittleJC3)

@@ -43,14 +43,13 @@
 # %pip install pandas pyarrow matplotlib seaborn numpy
 
 # %% [markdown]
-# Note: this cell uses Parquet (a highly compressed file that is temporary storage of frequently accessed data) caching for speed. The first run takes around 60-90 seconds (loading and cleaning the CSV). After the Parquet file is created, runs load in 1-2 seconds from the cached Parquet file. If the cache ever needs to be rebuilt (e.g., the CSV was updated), set FORCE_REBUILD = True, run the cell once, then set it back to False.
+# Note: this cell uses Parquet (a highly compressed file that is temporary storage of frequently accessed data) caching for speed. The first run takes around 60-90 seconds (loading and cleaning the CSV). After the Parquet file is created, runs load in 1-2 seconds from the cached Parquet file. Set FORCE_REBUILD = True if you need to rebuild the parquet cache from scratch (e.g. if the CSV was updated). Set it back to False after rebuilding.
 
 # %%
 import os
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
+import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
@@ -310,8 +309,6 @@ print(count_and_pct(year_plus['Complaint Type'], 10))
 # 2. **Negative resolution times (914 records, ~91% DOT/Street Light).** Almost certainly a system bug. Excluded from resolution-time calculations.
 # 3. **Resolution times over 1 year (1,103 records, spread across infrastructure agencies).** Likely real complaints that genuinely take a long time. Kept in the analysis.
 # 
-# Below is a quick summary of the numbers showing what's changed.
-# 
 # With those decisions made, we're ready to actually answer the questions.
 
 # %%
@@ -346,9 +343,7 @@ print(f"NaT resolution hours in original: {df_original['resolution_hours'].isnul
 # %% [markdown]
 # # Breaking down the removed rows
 # 
-# Wait, why are we removing records we seemingly want?
-# 
-# There are 2 reasons for that:
+# Understanding the removed records:
 # - **69,358 were technically 'Closed'** but weren't valid resolution times 
 #   (missing close date, negative time, or simultaneous open/close)
 # - **65,159 were still active** (In Progress, Open, Assigned, Pending, 
@@ -631,7 +626,7 @@ complaint_counts  = df['Complaint Type'].value_counts().head(15).sort_values(asc
 
 fig, ax = plt.subplots(figsize=(12, 7))
 
-bars = ax.barh(complaint_counts .index, complaint_counts .values, color='steelblue')
+bars = ax.barh(complaint_counts.index, complaint_counts.values, color='steelblue')
 
 # Add value labels on each bar
 for bar, val in zip(bars, complaint_counts .values):
@@ -654,13 +649,13 @@ print(count_and_pct(df['Complaint Type'], 15))
 # 
 # It would seem the first peak from the histogram accurately reflects most of the top complaints here. In the lead, we have illegal parking with more than half a million complaints (577,248), followed fairly close by Noise - Residential (463,171) and HEAT/HOT WATER (314,378). Each of the top 3 have about a 100,000 difference between them, so it's safe to say there likely isn't a connection, but the top 2 are complaints we've seen resolved quickly while HEAT/HOT WATER takes almost 2 days.
 # 
-# However, looking deeper, we can see that all "Noise" complaints totaled across 4 subcategories is roughly 756,000 complaints while illegal parking is roughly 575,000, resulting in overall noise comnplaints as the largest complaint "type."
+# However, looking deeper, we can see that all "Noise" complaints totaled across 4 subcategories is roughly 756,000 complaints while illegal parking is roughly 575,000, resulting in overall noise complaints as the largest complaint "type."
 # 
 # Something that is intriguing to see is that Noise - Street/Sidewalk and Blocked Driveway are almost identical with 173,033 and 172,721 respectively. It's possible that these complaints are sometimes related (a blocked driveway could create noise on a street), but the dataset doesn't have enough detail to confirm if individual complaints are related.
 # 
 # After that borderline tie, we see UNSANITARY CONDITION with 117,244 complaints and then a pretty steady and close decline of the numbers. At the bottom we have Noise and Encampment at 55,706 and 47,995 respectively which could potentially be another connection.
 # 
-# It's easy to see here that the top 2 complaints are handled by NYPD while HEAT/HOT WATER, the third most commont, is HPD handled. This links back nicely to earlier results with those 2 agencies being leaders in the first and second peaks.
+# It's easy to see here that the top 2 complaints are handled by NYPD while HEAT/HOT WATER, the third most common, is HPD handled. This links back nicely to earlier results with those 2 agencies being leaders in the first and second peaks.
 
 # %% [markdown]
 # # Question 4: What happens where?
@@ -873,5 +868,38 @@ plt.show()
 # These 2 lines slowly make their way back to each other where we see noise complaints hit their peak at 10PM (22:00) and then intersect with the red line just before midnight. This clearly shows the correlation between noise complaints being more prominent when people are home vs when they are away.
 # 
 # This also helps us see the NYPD's dominance in closing complaints quickly since the agency handling most of the noise complaints has officers already active and on patrol at night.
+
+# %% [markdown]
+# # Tying it all together
+# 
+# Over the course of this notebook we've asked and answered 5 different questions, and there's a clear thread connecting all of them. The data 
+# isn't random as it tells a real story about how New York City actually operates.
+# 
+# The fast complaints are almost entirely NYPD-handled, with near-immediate resolution times, while slower complaints follow formal multi-step processes. NYPD handles nearly half of all complaints citywide, and the dominant complaint types are noise and parking, both things officers can resolve on the spot. Brooklyn leads in raw complaint volume, but what people complain about varies by borough. Across all of it, the time patterns show complaints naturally following the rhythms of city life like morning peaks, evening noise, and weekday dominance.
+# 
+# NYC's 311 data isn't just a boring government record. It's a picture of a city going about its day.
+
+# %% [markdown]
+# # Summary
+# 
+# - The dataset contains 3.6 million records of 2025 and 3.52 million after cleaning to include only valid closed statuses and positive resolution times
+# 
+# - There were three data quality issues found: DHS had missing close dates (99% DHS), there were negative resolution times (91% DOT/Street Light), and year-plus resolutions (spread across multiple agencies), likely from long-term infrastructure requests and not a data quality issue
+# 
+# - Resolution times are heavily right-skewed with a median of 7.15 hours vs a mean of 214.7 hours.
+# 
+# - Resolution time had two distinct peaks: NYPD complaints close in under 2 hours (34% of all complaints) and HPD housing complaints take about a month
+# 
+# - NYPD handles 49% of all the valid complaints, which is more than the next 4 agencies combined
+# 
+# - The top individual complaint was Illegal Parking, but Noise complaints are the real volume leader when combining subcategories (about 756,000)
+# 
+# - Brooklyn reports 29.6% of all complaints, nearly double Staten Island's 3.7%
+# 
+# - Complaints peak at 11AM and again at 10PM; the evening spike is almost entirely noise complaints
+# 
+# - Weekdays lead complaint totals despite more people being home on the weekends; city services operate on weekday business hours
+# 
+# - January contains the highest monthly volume of complaints, partly because of heating issues and partly due to complaints from December 2024 closing in January 2025
 
 
