@@ -43,11 +43,11 @@ Subsequent runs load in 1-2 seconds from the cache.
 
 ## Questions answered
 
-1. How fast do things get resolved? (in progress)
-2. Who handles the complaints? (todo)
-3. What do people in NYC complain about? (todo)
-4. What happens where? (todo)
-5. When are complaints filed? (todo)
+1. How fast do things get resolved?
+2. Who handles the complaints?
+3. What do people in NYC complain about?
+4. What happens where?
+5. When are complaints filed?
 
 ## Tools used
 
