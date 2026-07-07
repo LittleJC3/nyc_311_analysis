@@ -18,7 +18,7 @@ answering questions about resolution times, agency patterns, and complaint volum
 - NYPD handles 49% of all complaints and closes them in a median of 1.3 hours which is more than the next 4 agencies combined
 - Resolution times are bimodal: quick police responses (under 2 hours) and formal housing processes (about 1 month)
 - Noise complaints are the true leader in volume at about 756,000 when combining subcategories, beating Illegal Parking's 577,000
-- Complaint patterns follow the rhythms of daily city life such as morning peaks, evening noise spikes, and weekday dominance
+- Complaint patterns follow the rhythms of daily city life - morning peaks, evening noise spikes, and weekday dominance
 
 ## Setup
 
