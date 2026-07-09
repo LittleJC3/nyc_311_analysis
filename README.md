@@ -5,14 +5,6 @@ requests filed in 2025 using pandas. The notebook encompasses going through
 loading and cleaning the data, identifying any data quality issues, and 
 answering questions about resolution times, agency patterns, and complaint volumes.
 
-## What I was looking for
-
-1. How fast do things get resolved?
-2. Who handles the complaints?
-3. What do people complain about?
-4. What happens where?
-5. When are complaints filed?
-
 ## Headline findings
 
 - NYPD handles 49% of all complaints and closes them in a median of 1.3 hours which is more than the next 4 agencies combined
@@ -57,3 +49,27 @@ Python, pandas, NumPy, matplotlib, seaborn, pyarrow
 
 Built as a portfolio project while exploring data analytics. 
 GitHub: [LittleJC3](https://github.com/LittleJC3)
+
+## Power BI Dashboard
+
+An executive dashboard built in Power BI summarizing the key findings 
+from the Python EDA, with interactive slicers for Borough, Agency, 
+and Month.
+
+### Overview
+![Dashboard Overview](images/dashboard_overview.png)
+
+### Filtered Views
+**Brooklyn Borough**
+![Brooklyn Filter](images/dashboard_brooklyn_filter.png)
+
+**NYPD Agency**
+![NYPD Filter](images/dashboard_nypd_filter.png)
+
+**August Month**
+![August Filter](images/dashboard_august_filter.png)
+
+> Filtering to NYPD alone reveals that the morning complaint peak 
+> disappears entirely and is replaced by an evening spike driven by noise 
+> complaints. The dashboard makes the relationship between agency type 
+> and time patterns immediately visible.
